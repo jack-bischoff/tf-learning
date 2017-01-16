@@ -1,48 +1,35 @@
-
-#fetches data from MNIST db
-from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+rom tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 import tensorflow as tf
+sess = tf.InteractiveSession()
 
+x = tf.placeholder(tf.float32, shape=[None, 784])
+y_ = tf.placeholder(tf.float32, shape=[None, 10])
 
-#x is a tensor representing the 784 pixel digit
-x = tf.placeholder(tf.float32, [None, 784])
-
-#W and b are components of softmax and are optimized by the model
+#declare and initialize parameters
 W = tf.Variable(tf.zeros([784, 10]))
 b = tf.Variable(tf.zeros([10]))
+sess.run(tf.global_variables_initializer())
 
-#computing multiplication of the weights by the pixel intensities
-# and then adding the bias
+#regression model
 y = tf.matmul(x, W) + b
 
-#correct 'labels'
-y_ = tf.placeholder(tf.float32, [None, 10])
+#training loss function
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y, y_))
 
-#according to tf docs, this method is better than applying softmax directly to 
-#the y tensor and using cross entropy for the cost function
-#This now serves both the model and the cost function
-cross_entropy = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
 
-#optimization of the values of W and b using gradient descent
+####TRAINING####
+
+#train_step is the optimizing operation...
 train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
 
+#So, train_step.run, will insert x and y_, run the optimizer which activates the cost and the model
+# running it 1000 times will iteratively minimize the loss function.
+for i in range(1000):
+    batch = mnist.train.next_batch(100)
+    train_step.run(feed_dict={x: batch[0], y_: batch[1]})
 
-init = tf.global_variables_initializer()
-
-#train and test
-with tf.Session() as sess:
-    sess.run(init)
-
-    for i in range(1000):
-        batch_xs, batch_ys = mnist.train.next_batch(100)
-        sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
-       
-        
-    correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
-    print(sess.run(accuracy, feed_dict={x: mnist.test.images, y_: mnist.test.labels}))
-    #accuracy ~ 92%
+correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_, 1))
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+print(accuracy.eval(feed_dict={x: mnist.test.images, y_: mnist.test.labels}))
